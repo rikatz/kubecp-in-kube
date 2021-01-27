@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: cluster-1
+  name: kube-apiserver
+  labels:
+    cluster-name: cluster-1
+    component: kube-apiserver
+    tier: control-plane
+    app: kube-apiserver
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: kube-apiserver
+  template:
+    metadata:
+      labels:
+        app: kube-apiserver
+    spec:
+      containers:
+      - command:
+        - kube-apiserver
+        # - --advertise-address=172.18.0.2
+        - --allow-privileged=true
+        - --authorization-mode=Node,RBAC
+        - --client-ca-file=/etc/kubernetes/ca/ca.crt
+        - --enable-admission-plugins=NodeRestriction
+        - --enable-bootstrap-token-auth=true
+        #- --etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt
+        #- --etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt
+        #- --etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key
+        - --etcd-servers=http://etcd:2379 # Poderia ser etcd-1, etcd-2, etcd-3 de acordo com statefulset? Ou se eu chamar etcd e ele resolver para todos, funciona?
+        #- --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt
+        #- --kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key
+        - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+        #- --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt
+        #- --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key
+        #- --requestheader-allowed-names=front-proxy-client
+        #- --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt
+        #- --requestheader-extra-headers-prefix=X-Remote-Extra-
+        #- --requestheader-group-headers=X-Remote-Group
+        #- --requestheader-username-headers=X-Remote-User
+        - --runtime-config=
+        - --secure-port=6443
+        - --service-account-issuer=https://kubernetes.default.svc.cluster.local
+        - --service-account-signing-key-file=/etc/kubernetes/sa/service-accounts.key
+        - --service-account-key-file=/etc/kubernetes/sa/service-accounts.crt
+        - --service-cluster-ip-range=10.96.0.0/12
+        - --tls-cert-file=/etc/kubernetes/certs/apiserver.crt
+        - --tls-private-key-file=/etc/kubernetes/certs/apiserver.key
+        image: k8s.gcr.io/kube-apiserver:v1.20.2
+        imagePullPolicy: IfNotPresent
+        # livenessProbe:
+        #  failureThreshold: 8
+        #  httpGet:
+        #    host: 127.0.0.1
+        #    path: /livez
+        #    port: 6443
+        #    scheme: HTTPS # MUDAR
+        #  initialDelaySeconds: 10
+        #  periodSeconds: 10
+        #  successThreshold: 1
+        #  timeoutSeconds: 15
+        name: kube-apiserver
+        # readinessProbe:
+        #  failureThreshold: 3
+        #  httpGet:
+        #    host: 127.0.0.1
+        #    path: /readyz
+        #    port: 6443 
+        #    scheme: HTTPS # Mudar
+        #  periodSeconds: 1
+        #  successThreshold: 1
+        #  timeoutSeconds: 15
+        resources:
+          requests:
+            cpu: 250m
+            # startupProbe:
+            #  failureThreshold: 24
+            # httpGet:
+            #host: 172.18.0.2
+            #path: /livez
+            #port: 6443
+            #scheme: HTTPS
+            #initialDelaySeconds: 10
+            #periodSeconds: 10
+            #successThreshold: 1
+            #timeoutSeconds: 15
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/kubernetes/certs
+          name: apiserver-certs
+          readOnly: true
+        - mountPath: /etc/kubernetes/ca
+          name: k8s-ca-cert
+          readOnly: true
+        - mountPath: /etc/kubernetes/sa
+          name: k8s-sa-certs
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: true
+      hostNetwork: false
+      preemptionPolicy: PreemptLowerPriority
+      priority: 2000001000
+      priorityClassName: system-node-critical
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - effect: NoExecute
+        operator: Exists
+      volumes:
+      - secret:
+          secretName: apiserver-certs
+        name: apiserver-certs
+      - secret:
+          secretName: root-ca
+        name: k8s-ca-cert
+      - secret:
+          secretName: service-account-cert
+        name: k8s-sa-certs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: cluster-1
+  name: kubernetes
+spec:
+  clusterIP: None
+  ports:
+  - name: 6443-6443
+    port: 6443
+    protocol: TCP
+    targetPort: 6443
+  selector:
+    app: kube-apiserver

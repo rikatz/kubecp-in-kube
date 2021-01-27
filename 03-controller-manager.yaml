@@ -1,0 +1,139 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: controller-manager-conf
+  namespace: cluster-1
+data:
+  controller-manager.conf: |
+    apiVersion: v1
+    clusters:
+    - cluster:
+        server: https://kubernetes:6443 
+        certificate-authority: /etc/kubernetes/ca/ca.crt
+      name: kubernetes
+    contexts:
+    - context:
+        cluster: kubernetes
+        user: system:kube-controller-manager
+      name: system:kube-controller-manager@kubernetes
+    current-context: system:kube-controller-manager@kubernetes
+    kind: Config
+    preferences: {}
+    users:
+    - name: system:kube-controller-manager
+      user:
+       client-certificate: /etc/kubernetes/certs/controller-manager.crt
+       client-key: /etc/kubernetes/certs/controller-manager.key
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: cluster-1
+  name: kube-controller-manager
+  labels:
+    cluster-name: cluster-1
+    component: kube-controller-manager
+    tier: control-plane
+    app: kube-controller-manager
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: kube-controller-manager
+  template:
+    metadata:
+      labels:
+        app: kube-controller-manager
+    spec:
+      containers:
+      - command:
+        - kube-controller-manager
+        - --allocate-node-cidrs=true
+        - --authentication-kubeconfig=/etc/kubernetes/config/controller-manager.conf
+        - --authorization-kubeconfig=/etc/kubernetes/config/controller-manager.conf
+        - --bind-address=127.0.0.1
+        - --client-ca-file=/etc/kubernetes/ca/ca.crt
+        - --cluster-cidr=10.244.0.0/16
+        - --cluster-name=cluster-1
+        #- --cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt # Csrsigning controller flags:
+        #- --cluster-signing-key-file=/etc/kubernetes/pki/ca.key # Precisa ser mesmo a CA do Cluster? Acho que sim para o Certificate Controller. Mas...Podemos desativar se formos gerar pelo vault
+        - --controllers=*,bootstrapsigner,tokencleaner
+        - --kubeconfig=/etc/kubernetes/config/controller-manager.conf
+        - --leader-elect=true
+        - --node-cidr-mask-size=24
+        #- --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt # Preciso ver para que será usado
+        - --root-ca-file=/etc/kubernetes/ca/ca.crt
+        - --service-account-private-key-file=/etc/kubernetes/sa/service-accounts.key
+        - --service-cluster-ip-range=10.96.0.0/12
+        - --use-service-account-credentials=true
+        image: k8s.gcr.io/kube-controller-manager:v1.20.2
+        imagePullPolicy: IfNotPresent
+        #livenessProbe:
+        #  failureThreshold: 8
+        #  httpGet:
+        #    host: 127.0.0.1
+        #    path: /healthz
+        #    port: 10257
+        #    scheme: HTTPS
+        #  initialDelaySeconds: 10
+        #  periodSeconds: 10
+        #  successThreshold: 1
+        #  timeoutSeconds: 15
+        name: kube-controller-manager
+        resources:
+          requests:
+            cpu: 200m
+        #startupProbe:
+        #  failureThreshold: 24
+        #  httpGet:
+        #    host: 127.0.0.1
+        #    path: /healthz
+        #    port: 10257
+        #    scheme: HTTPS
+        #  initialDelaySeconds: 10
+        #  periodSeconds: 10
+        #  successThreshold: 1
+        #  timeoutSeconds: 15
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/kubernetes/certs
+          name: controller-certs
+          readOnly: true
+        - mountPath: /etc/kubernetes/ca
+          name: k8s-ca-cert
+          readOnly: true
+        - mountPath: /etc/kubernetes/sa
+          name: k8s-sa-certs
+          readOnly: true
+        - mountPath: /etc/kubernetes/config
+          name: kubeconfig
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: true
+      hostNetwork: false
+      preemptionPolicy: PreemptLowerPriority
+      priority: 2000001000
+      priorityClassName: system-node-critical
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - effect: NoExecute
+        operator: Exists
+      volumes:
+      - secret:
+          secretName: controller-certs
+        name: controller-certs
+      - secret:
+          secretName: root-ca
+        name: k8s-ca-cert
+      - secret:
+          secretName: service-account-cert
+        name: k8s-sa-certs        
+      - name: kubeconfig
+        configMap:
+          name: controller-manager-conf

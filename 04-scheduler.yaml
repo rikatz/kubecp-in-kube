@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scheduler-conf
+  namespace: cluster-1
+data:
+  scheduler.conf: |
+    apiVersion: v1
+    clusters:
+    - cluster:
+        server: https://kubernetes:6443 
+        certificate-authority: /etc/kubernetes/ca/ca.crt
+      name: kubernetes
+    contexts:
+    - context:
+        cluster: kubernetes
+        user: system:kube-scheduler
+      name: system:kube-scheduler@kubernetes
+    current-context: system:kube-scheduler@kubernetes
+    kind: Config
+    preferences: {}
+    users:
+    - name: system:kube-scheduler
+      user:
+       client-certificate: /etc/kubernetes/certs/scheduler.crt
+       client-key: /etc/kubernetes/certs/scheduler.key
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: cluster-1
+  name: kube-scheduler
+  labels:
+    cluster-name: cluster-1
+    component: kube-scheduler
+    tier: control-plane
+    app: kube-scheduler
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: kube-scheduler
+  template:
+    metadata:
+      labels:
+        app: kube-scheduler
+    spec:
+      containers:
+      - command:
+        - kube-scheduler
+        - --authentication-kubeconfig=/etc/kubernetes/config/scheduler.conf
+        - --authorization-kubeconfig=/etc/kubernetes/config/scheduler.conf
+        - --bind-address=127.0.0.1
+        - --kubeconfig=/etc/kubernetes/config/scheduler.conf
+        - --leader-elect=true
+        - --port=0
+        image: k8s.gcr.io/kube-scheduler:v1.20.2
+        imagePullPolicy: IfNotPresent
+        #livenessProbe:
+        #  failureThreshold: 8
+        #  httpGet:
+        #    host: 127.0.0.1
+        #    path: /healthz
+        #    port: 10259
+        #    scheme: HTTPS
+        #  initialDelaySeconds: 10
+        #  periodSeconds: 10
+        #  timeoutSeconds: 15
+        name: kube-scheduler
+        resources:
+          requests:
+            cpu: 100m
+        #startupProbe:
+        #  failureThreshold: 24
+        #  httpGet:
+        #    host: 127.0.0.1
+        #    path: /healthz
+        #    port: 10259
+        #    scheme: HTTPS
+        #  initialDelaySeconds: 10
+        #  periodSeconds: 10
+        #  timeoutSeconds: 15
+        volumeMounts:
+        - mountPath: /etc/kubernetes/certs
+          name: scheduler-certs
+          readOnly: true
+        - mountPath: /etc/kubernetes/ca
+          name: k8s-ca-cert
+          readOnly: true
+        - mountPath: /etc/kubernetes/config
+          name: kubeconfig
+          readOnly: true
+      hostNetwork: false
+      priorityClassName: system-node-critical
+      volumes:
+      - secret:
+          secretName: scheduler-certs
+        name: scheduler-certs
+      - secret:
+          secretName: root-ca
+        name: k8s-ca-cert
+      - name: kubeconfig
+        configMap:
+          name: scheduler-conf
+    
