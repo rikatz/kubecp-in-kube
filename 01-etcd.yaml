@@ -24,23 +24,23 @@ spec:
       containers:
       - command:
         - etcd
-        - --advertise-client-urls=http://etcd:2379
-        # - --cert-file=/etc/kubernetes/pki/etcd/server.crt
-        # - --client-cert-auth=true
+        - --advertise-client-urls=https://etcd:2379
+        - --cert-file=/etc/kubernetes/certs/etcd-server.crt
+        - --client-cert-auth=true
         - --data-dir=/var/lib/etcd
         #- --initial-advertise-peer-urls=https://172.18.0.2:2380
         #- --initial-cluster=kind-control-plane=https://172.18.0.2:2380
-        #- --key-file=/etc/kubernetes/pki/etcd/server.key
-        - --listen-client-urls=http://0.0.0.0:2379
-        - --listen-metrics-urls=http://0.0.0.0:2381
-        - --listen-peer-urls=http://0.0.0.0:2380
+        - --key-file=/etc/kubernetes/certs/etcd-server.key
+        - --listen-client-urls=https://0.0.0.0:2379
+        - --listen-metrics-urls=https://0.0.0.0:2381
+        - --listen-peer-urls=https://0.0.0.0:2380
         - --name=kind-control-plane
-        #- --peer-cert-file=/etc/kubernetes/pki/etcd/peer.crt
-        #- --peer-client-cert-auth=true
-        #- --peer-key-file=/etc/kubernetes/pki/etcd/peer.key
-        #- --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
+        - --peer-cert-file=/etc/kubernetes/certs/etcd-peers.crt
+        - --peer-client-cert-auth=true
+        - --peer-key-file=/etc/kubernetes/certs/etcd-peers.key
+        - --peer-trusted-ca-file=/etc/kubernetes/ca/ca-etcd.crt
         - --snapshot-count=10000
-        #- --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
+        - --trusted-ca-file=/etc/kubernetes/ca/ca-etcd.crt
         image: k8s.gcr.io/etcd:3.4.13-0
         imagePullPolicy: IfNotPresent
         #      livenessProbe:
@@ -72,8 +72,12 @@ spec:
         volumeMounts:
         - mountPath: /var/lib/etcd
           name: etcd-data
-        - mountPath: /etc/kubernetes/pki/etcd
-          name: etcd-certs
+        - mountPath: /etc/kubernetes/ca/
+          name: k8s-ca-cert
+          readOnly: true
+        - mountPath: /etc/kubernetes/certs/
+          name: etcd-cert
+          readOnly: true
       dnsPolicy: ClusterFirst
       enableServiceLinks: true
       hostNetwork: false
@@ -88,10 +92,12 @@ spec:
       - effect: NoExecute
         operator: Exists
       volumes:
-      - hostPath:
-          path: /etc/kubernetes/pki/etcd1 # Configuravel, usar Secrets.
-          type: DirectoryOrCreate
-        name: etcd-certs
+      - secret:
+          secretName: root-ca
+        name: k8s-ca-cert
+      - secret:
+          secretName: etcd-cert
+        name: etcd-cert
       - hostPath:
           path: /var/lib/etcd1 # Configuravel, deve usar NVME
           type: DirectoryOrCreate

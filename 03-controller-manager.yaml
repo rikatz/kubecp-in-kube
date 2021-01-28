@@ -57,13 +57,13 @@ spec:
         - --client-ca-file=/etc/kubernetes/ca/ca.crt
         - --cluster-cidr=10.244.0.0/16
         - --cluster-name=cluster-1
-        #- --cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt # Csrsigning controller flags:
-        #- --cluster-signing-key-file=/etc/kubernetes/pki/ca.key # Precisa ser mesmo a CA do Cluster? Acho que sim para o Certificate Controller. Mas...Podemos desativar se formos gerar pelo vault
+        #- --cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt # Do we want to sign nodes or issue by vault?
+        #- --cluster-signing-key-file=/etc/kubernetes/pki/ca.key # 
         - --controllers=*,bootstrapsigner,tokencleaner
         - --kubeconfig=/etc/kubernetes/config/controller-manager.conf
         - --leader-elect=true
         - --node-cidr-mask-size=24
-        #- --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt # Preciso ver para que será usado
+        - --requestheader-client-ca-file=/etc/kubernetes/ca/ca-proxy.crt
         - --root-ca-file=/etc/kubernetes/ca/ca.crt
         - --service-account-private-key-file=/etc/kubernetes/sa/service-accounts.key
         - --service-cluster-ip-range=10.96.0.0/12
