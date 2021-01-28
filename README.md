@@ -7,5 +7,5 @@
 # TODOs
 * Automate the certificate generation AND/OR post examples using cfssl
 * ETCD should run a minimum of three replicas, maybe as a stateful set
-* Liveness, readiness and startup probes needs to be re-inserted again
 * Test the provisioning of kubelet/nodes
+* Add NetworkPolicy Objects for each of the Deployments

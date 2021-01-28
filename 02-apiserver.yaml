@@ -52,42 +52,39 @@ spec:
         - --tls-private-key-file=/etc/kubernetes/certs/apiserver.key
         image: k8s.gcr.io/kube-apiserver:v1.20.2
         imagePullPolicy: IfNotPresent
-        # livenessProbe:
-        #  failureThreshold: 8
-        #  httpGet:
-        #    host: 127.0.0.1
-        #    path: /livez
-        #    port: 6443
-        #    scheme: HTTPS # MUDAR
-        #  initialDelaySeconds: 10
-        #  periodSeconds: 10
-        #  successThreshold: 1
-        #  timeoutSeconds: 15
+        livenessProbe:
+         failureThreshold: 8
+         httpGet:
+           path: /livez
+           port: 6443
+           scheme: HTTPS
+         initialDelaySeconds: 10
+         periodSeconds: 10
+         successThreshold: 1
+         timeoutSeconds: 15
         name: kube-apiserver
-        # readinessProbe:
-        #  failureThreshold: 3
-        #  httpGet:
-        #    host: 127.0.0.1
-        #    path: /readyz
-        #    port: 6443 
-        #    scheme: HTTPS # Mudar
-        #  periodSeconds: 1
-        #  successThreshold: 1
-        #  timeoutSeconds: 15
+        readinessProbe:
+         failureThreshold: 3
+         httpGet:
+           path: /readyz
+           port: 6443 
+           scheme: HTTPS
+         periodSeconds: 1
+         successThreshold: 1
+         timeoutSeconds: 15
         resources:
           requests:
             cpu: 250m
-            # startupProbe:
-            #  failureThreshold: 24
-            # httpGet:
-            #host: 172.18.0.2
-            #path: /livez
-            #port: 6443
-            #scheme: HTTPS
-            #initialDelaySeconds: 10
-            #periodSeconds: 10
-            #successThreshold: 1
-            #timeoutSeconds: 15
+        startupProbe:
+          failureThreshold: 24
+          httpGet:
+            path: /livez
+            port: 6443
+            scheme: HTTPS
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 15
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:

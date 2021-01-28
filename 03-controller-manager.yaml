@@ -53,7 +53,7 @@ spec:
         - --allocate-node-cidrs=true
         - --authentication-kubeconfig=/etc/kubernetes/config/controller-manager.conf
         - --authorization-kubeconfig=/etc/kubernetes/config/controller-manager.conf
-        - --bind-address=127.0.0.1
+        # - --bind-address=127.0.0.1# For the sake of metrics
         - --client-ca-file=/etc/kubernetes/ca/ca.crt
         - --cluster-cidr=10.244.0.0/16
         - --cluster-name=cluster-1
@@ -70,32 +70,30 @@ spec:
         - --use-service-account-credentials=true
         image: k8s.gcr.io/kube-controller-manager:v1.20.2
         imagePullPolicy: IfNotPresent
-        #livenessProbe:
-        #  failureThreshold: 8
-        #  httpGet:
-        #    host: 127.0.0.1
-        #    path: /healthz
-        #    port: 10257
-        #    scheme: HTTPS
-        #  initialDelaySeconds: 10
-        #  periodSeconds: 10
-        #  successThreshold: 1
-        #  timeoutSeconds: 15
+        livenessProbe:
+          failureThreshold: 8
+          httpGet:
+            path: /healthz
+            port: 10257
+            scheme: HTTPS
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 15
         name: kube-controller-manager
         resources:
           requests:
             cpu: 200m
-        #startupProbe:
-        #  failureThreshold: 24
-        #  httpGet:
-        #    host: 127.0.0.1
-        #    path: /healthz
-        #    port: 10257
-        #    scheme: HTTPS
-        #  initialDelaySeconds: 10
-        #  periodSeconds: 10
-        #  successThreshold: 1
-        #  timeoutSeconds: 15
+        startupProbe:
+          failureThreshold: 24
+          httpGet:
+            path: /healthz
+            port: 10257
+            scheme: HTTPS
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 15
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
